@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ettayea VPN — Admin Panel</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Arial, sans-serif; }
+  body { background:#0d1b2e; color:#eaf2fb; min-height:100vh; }
+  header { background:linear-gradient(90deg,#0D47A1,#1976D2); padding:14px 20px; display:flex; align-items:center; gap:12px; }
+  header img { width:38px; height:38px; border-radius:9px; }
+  header h1 { font-size:19px; flex:1; }
+  header button { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.35); padding:8px 14px; border-radius:9px; cursor:pointer; }
+  main { max-width:980px; margin:0 auto; padding:20px 14px 50px; }
+  .card { background:#13273f; border:1px solid #1f3c5f; border-radius:16px; padding:18px; margin-bottom:18px; }
+  .card h2 { font-size:17px; margin-bottom:12px; color:#90CAF9; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; }
+  .stat { background:#0d2138; border:1px solid #1f3c5f; border-radius:12px; padding:14px; text-align:center; }
+  .stat b { font-size:24px; display:block; }
+  .stat span { font-size:12px; color:#9db8d6; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { padding:9px 8px; border-bottom:1px solid #1f3c5f; text-align:left; vertical-align:middle; }
+  th { color:#90CAF9; font-size:12px; }
+  .mono { font-family:monospace; font-size:12px; word-break:break-all; }
+  .btn { border:0; border-radius:8px; padding:7px 12px; cursor:pointer; font-weight:700; font-size:12px; }
+  .btn-blue { background:#1976D2; color:#fff; }
+  .btn-gold { background:#F9A825; color:#231a00; }
+  .btn-red { background:#C62828; color:#fff; }
+  .btn-gray { background:#37474F; color:#fff; }
+  .btn-green { background:#2E7D32; color:#fff; }
+  label { display:block; font-size:13px; color:#b9d2ee; margin:10px 0 5px; }
+  input[type=text], input[type=number], input[type=email], input[type=password], textarea {
+    width:100%; background:#0d2138; border:1px solid #2b4f7c; border-radius:10px; color:#fff; padding:10px 12px; font-size:14px; }
+  textarea { min-height:130px; font-family:monospace; font-size:12px; }
+  .row { display:flex; align-items:center; gap:10px; }
+  .switch { position:relative; width:52px; height:28px; flex:none; }
+  .switch input { opacity:0; width:0; height:0; }
+  .track { position:absolute; inset:0; background:#37474F; border-radius:999px; transition:.2s; }
+  .track:before { content:""; position:absolute; width:22px; height:22px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+  .switch input:checked + .track { background:#2E7D32; }
+  .switch input:checked + .track:before { transform:translateX(24px); }
+  #loginBox { max-width:400px; margin:70px auto; }
+  .msg { font-size:13px; margin-top:10px; min-height:18px; }
+  .ok { color:#81C784; } .err { color:#EF9A9A; }
+  .hidden { display:none; }
+  .tag { font-size:11px; padding:2px 8px; border-radius:999px; font-weight:700; }
+  .tag-vip { background:#F9A825; color:#231a00; } .tag-ban { background:#C62828; color:#fff; }
+</style>
+</head>
+<body>
+<header>
+  <img src="../icon.png" alt="">
+  <h1>Ettayea VPN — Admin Panel</h1>
+  <button id="btnLogout" class="hidden">Logout</button>
+</header>
+<main>
+  <!-- LOGIN -->
+  <div id="loginBox" class="card">
+    <h2>🔐 Admin login</h2>
+    <label>Email</label>
+    <input type="email" id="loginEmail" placeholder="admin@example.com">
+    <label>Password</label>
+    <input type="password" id="loginPass" placeholder="••••••••">
+    <div style="margin-top:16px"><button class="btn btn-blue" id="btnLogin" style="width:100%;padding:12px">Login</button></div>
+    <div class="msg" id="loginMsg"></div>
+  </div>
+
+  <!-- PANEL -->
+  <div id="panel" class="hidden">
+    <div class="card">
+      <h2>📊 Users</h2>
+      <div class="stats">
+        <div class="stat"><b id="stTotal">–</b><span>Total users</span></div>
+        <div class="stat"><b id="stDay">–</b><span>Active 24h</span></div>
+        <div class="stat"><b id="stWeek">–</b><span>Active 7 days</span></div>
+        <div class="stat"><b id="stVip">–</b><span>VIP</span></div>
+        <div class="stat"><b id="stBan">–</b><span>Banned</span></div>
+      </div>
+      <div style="margin-top:14px; overflow-x:auto">
+      <table>
+        <thead><tr><th>Device ID</th><th>Device</th><th>App</th><th>First seen</th><th>Last seen</th><th>Actions</th></tr></thead>
+        <tbody id="usersBody"><tr><td colspan="6">Loading…</td></tr></tbody>
+      </table>
+      </div>
+      <div class="msg" id="usersMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎛️ Global controls</h2>
+      <div class="row"><label class="switch"><input type="checkbox" id="ctlEnabled"><span class="track"></span></label><span>App enabled (OFF = kill switch for everyone)</span></div>
+      <label>Force update — minimum version code (0 = off). Current build = 40 (v4.0)</label>
+      <input type="number" id="ctlMinVer" value="0">
+      <label>Force update title</label>
+      <input type="text" id="ctlForceTitle" value="Update required">
+      <label>Force update message</label>
+      <input type="text" id="ctlForceMsg" value="A new version of Ettayea VPN is available. Please update to continue.">
+      <label>New APK URL (button opens this)</label>
+      <input type="text" id="ctlForceUrl" value="https://ettayea01.github.io/Ettayea-VPN.apk">
+      <div style="margin-top:14px"><button class="btn btn-green" id="btnSaveControls" style="padding:11px 22px">💾 Save controls</button></div>
+      <div class="msg" id="ctlMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>📣 Announcement popup</h2>
+      <div class="row"><label class="switch"><input type="checkbox" id="annOn"><span class="track"></span></label><span>Show announcement to all users</span></div>
+      <label>Title</label>
+      <input type="text" id="annTitle" placeholder="🎉 Good news">
+      <label>Message</label>
+      <input type="text" id="annMsg" placeholder="Write your message…">
+      <label>Button label (optional)</label>
+      <input type="text" id="annBtn" placeholder="Open Telegram">
+      <label>Button URL (optional)</label>
+      <input type="text" id="annUrl" placeholder="https://t.me/ettayeavpn">
+      <div style="margin-top:14px"><button class="btn btn-blue" id="btnSaveAnn" style="padding:11px 22px">📣 Publish announcement (shows again to everyone)</button></div>
+      <div class="msg" id="annMsgBox"></div>
+    </div>
+
+    <div class="card">
+      <h2>⚙️ Publish config (servers + tweaks)</h2>
+      <p style="font-size:13px;color:#9db8d6">Paste the full <b>config.json</b> (Ettayea format) and publish — every user gets it at next launch, no new APK needed. It stays applied offline too.</p>
+      <label>config.json</label>
+      <textarea id="cfgText" placeholder='{"config_version": 4, "servers": [...], "tweaks": [...]}'></textarea>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-green" id="btnPublishCfg" style="padding:11px 22px">🚀 Publish config</button>
+        <span id="cfgCurrent" style="font-size:13px;color:#9db8d6"></span>
+      </div>
+      <div class="msg" id="cfgMsg"></div>
+    </div>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = { apiKey: "AIzaSyDUSJP7ZpH9LtVjR0iEC2obBaZCdon-Eow", authDomain: "ettayea-vpn.firebaseapp.com", projectId: "ettayea-vpn" };
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const $ = id => document.getElementById(id);
+const fmt = ts => { if (!ts) return "—"; const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); };
+
+auth.onAuthStateChanged(user => {
+  $("loginBox").classList.toggle("hidden", !!user);
+  $("panel").classList.toggle("hidden", !user);
+  $("btnLogout").classList.toggle("hidden", !user);
+  if (user) { loadUsers(); loadControls(); loadCfgInfo(); }
+});
+$("btnLogin").onclick = async () => {
+  $("loginMsg").textContent = ""; $("loginMsg").className = "msg";
+  try { await auth.signInWithEmailAndPassword($("loginEmail").value.trim(), $("loginPass").value); }
+  catch (e) { $("loginMsg").textContent = "❌ " + e.message; $("loginMsg").classList.add("err"); }
+};
+$("btnLogout").onclick = () => auth.signOut();
+
+async function loadUsers() {
+  try {
+    const snap = await db.collection("users").orderBy("lastSeen", "desc").limit(500).get();
+    const now = Date.now(); let day = 0, week = 0, vip = 0, ban = 0; let rows = "";
+    snap.forEach(doc => {
+      const u = doc.data(); const id = doc.id;
+      const last = u.lastSeen && u.lastSeen.toDate ? u.lastSeen.toDate().getTime() : 0;
+      if (now - last < 864e5) day++; if (now - last < 7 * 864e5) week++;
+      if (u.vip) vip++; if (u.banned) ban++;
+      rows += `<tr>
+        <td class="mono">${id.slice(0,10)}… <button class="btn btn-gray" onclick="navigator.clipboard.writeText('${id}')">copy</button>
+          ${u.vip ? '<span class="tag tag-vip">VIP</span>' : ''} ${u.banned ? '<span class="tag tag-ban">BANNED</span>' : ''}</td>
+        <td>${(u.model || "—")}<br><span style="color:#9db8d6">Android API ${u.android || "?"}</span></td>
+        <td>${u.appVersion || "—"}</td>
+        <td>${fmt(u.firstSeen)}</td><td>${fmt(u.lastSeen)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn ${u.vip ? 'btn-gray' : 'btn-gold'}" onclick="setUser('${id}','vip',${!u.vip})">${u.vip ? 'Remove VIP' : '👑 VIP'}</button>
+          <button class="btn ${u.banned ? 'btn-green' : 'btn-red'}" onclick="setUser('${id}','banned',${!u.banned})">${u.banned ? 'Unban' : '⛔ Ban'}</button>
+        </td></tr>`;
+    });
+    $("usersBody").innerHTML = rows || '<tr><td colspan="6">No users yet.</td></tr>';
+    $("stTotal").textContent = snap.size; $("stDay").textContent = day; $("stWeek").textContent = week;
+    $("stVip").textContent = vip; $("stBan").textContent = ban;
+  } catch (e) { $("usersMsg").textContent = "❌ " + e.message; $("usersMsg").classList.add("err"); }
+}
+async function setUser(id, field, value) {
+  try { await db.collection("users").doc(id).set({ [field]: value }, { merge: true }); loadUsers(); }
+  catch (e) { alert(e.message); }
+}
+
+async function loadControls() {
+  try {
+    const doc = await db.collection("admin").doc("app").get();
+    if (doc.exists) { const c = doc.data();
+      $("ctlEnabled").checked = c.app_enabled !== false;
+      $("ctlMinVer").value = c.min_version || 0;
+      if (c.force_title) $("ctlForceTitle").value = c.force_title;
+      if (c.force_message) $("ctlForceMsg").value = c.force_message;
+      if (c.force_url) $("ctlForceUrl").value = c.force_url;
+      $("annOn").checked = !!c.announce_on;
+      $("annTitle").value = c.announce_title || ""; $("annMsg").value = c.announce_message || "";
+      $("annBtn").value = c.announce_button || ""; $("annUrl").value = c.announce_url || "";
+    } else { $("ctlEnabled").checked = true; }
+  } catch (e) { $("ctlMsg").textContent = "❌ " + e.message; $("ctlMsg").classList.add("err"); }
+}
+$("btnSaveControls").onclick = async () => {
+  try {
+    await db.collection("admin").doc("app").set({
+      app_enabled: $("ctlEnabled").checked,
+      min_version: parseInt($("ctlMinVer").value || "0", 10),
+      force_title: $("ctlForceTitle").value, force_message: $("ctlForceMsg").value, force_url: $("ctlForceUrl").value
+    }, { merge: true });
+    $("ctlMsg").textContent = "✅ Saved — users get it at next launch (and it stays offline)."; $("ctlMsg").className = "msg ok";
+  } catch (e) { $("ctlMsg").textContent = "❌ " + e.message; $("ctlMsg").className = "msg err"; }
+};
+$("btnSaveAnn").onclick = async () => {
+  try {
+    await db.collection("admin").doc("app").set({
+      announce_on: $("annOn").checked, announce_id: Date.now() % 2000000000,
+      announce_title: $("annTitle").value, announce_message: $("annMsg").value,
+      announce_button: $("annBtn").value, announce_url: $("annUrl").value
+    }, { merge: true });
+    $("annMsgBox").textContent = "✅ Announcement published."; $("annMsgBox").className = "msg ok";
+  } catch (e) { $("annMsgBox").textContent = "❌ " + e.message; $("annMsgBox").className = "msg err"; }
+};
+
+async function loadCfgInfo() {
+  try {
+    const doc = await db.collection("admin").doc("app_config").get();
+    if (doc.exists) { const c = doc.data(); $("cfgCurrent").textContent = "Currently published: config v" + (c.version || "?") + " — " + fmt(c.updatedAt); }
+  } catch (e) { }
+}
+$("btnPublishCfg").onclick = async () => {
+  const raw = $("cfgText").value.trim();
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed.servers) || !Array.isArray(parsed.tweaks)) throw new Error("JSON must contain servers[] and tweaks[]");
+    await db.collection("admin").doc("app_config").set({
+      json: raw, version: parsed.config_version || 0,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    $("cfgMsg").textContent = "✅ Config v" + (parsed.config_version || "?") + " published: " + parsed.servers.length + " servers, " + parsed.tweaks.length + " tweaks.";
+    $("cfgMsg").className = "msg ok"; loadCfgInfo();
+  } catch (e) { $("cfgMsg").textContent = "❌ " + e.message; $("cfgMsg").className = "msg err"; }
+};
+</script>
+</body>
+</html>
