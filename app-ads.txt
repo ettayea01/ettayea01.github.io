@@ -132,4 +132,5 @@ bidmatic.io, b-c0fec, RESELLER
 smartadserver.com, 4721, RESELLER
 qntv.io, 10050326, RESELLER
 shinka.io, 1000061, RESELLER
-pubx.ai, 45942929018065, RESELLERunity3d.com, 11270737840109, DIRECT, 96cabb5fbdde37a7
+pubx.ai, 45942929018065, RESELLER
+unity3d.com, 11270737840109, DIRECT, 96cabb5fbdde37a7
