@@ -117,7 +117,7 @@
 
     <div class="card">
       <h2>⚙️ Publish config (servers + tweaks)</h2>
-      <p style="font-size:13px;color:#9db8d6">Paste the full <b>config.json</b> (Ettayea format) and publish — every user gets it at next launch, no new APK needed. It stays applied offline too.</p>
+      <p style="font-size:13px;color:#9db8d6">Paste the full <b>config.json</b> and publish — every user gets it at next launch, no new APK needed. It stays applied offline too. <b>Both formats work:</b> Ettayea format (servers/tweaks) or the original MNR format (Servers/Networks) — MNR is converted automatically.</p>
       <label>config.json</label>
       <textarea id="cfgText" placeholder='{"config_version": 4, "servers": [...], "tweaks": [...]}'></textarea>
       <div class="row" style="margin-top:12px">
@@ -219,6 +219,53 @@ $("btnSaveAnn").onclick = async () => {
   } catch (e) { $("annMsgBox").textContent = "❌ " + e.message; $("annMsgBox").className = "msg err"; }
 };
 
+function mnrBool(v) { return v === true || v === "true" || v === "True"; }
+function convertMnr(src) {
+  const servers = [];
+  (src.Servers || []).forEach((s, i) => {
+    if (!((s.ServerIP || "").trim())) return; // entrée "Random Servers": pas un vrai serveur
+    const out = { id: "srv" + (i + 1), name: s.Name || "", host: s.ServerIP || "",
+      uuid: "", sni: "", path: "/", network: "tcp", security: "tls",
+      dnsHost: "", dnsPort: 53, nameserver: "",
+      sshUser: s.ServerUser || "", sshPass: s.ServerPass || "",
+      enabled: true, flag: (s.FLAG || "").toLowerCase(),
+      dnsDomain: s.serverNameKey || "", dnsPubKey: s.chaveKey || "" };
+    const url = (s.v2rayurl || "").split("~")[0].trim();
+    if (url) {
+      const u = new URL(url); const q = u.searchParams;
+      out.protocol = u.protocol.replace(":", "");
+      out.port = parseInt(u.port || "443", 10);
+      out.uuid = decodeURIComponent(u.username || "");
+      out.sni = q.get("sni") || "";
+      out.path = q.get("path") || "/";
+      out.network = q.get("type") || "tcp";
+      out.security = q.get("security") || "tls";
+      out.dnsHost = s.ServerIP || "";
+    } else {
+      out.protocol = s.ServerUser ? "ssh" : "udp";
+      out.port = parseInt(s.ServerPort || "0", 10) || 0;
+    }
+    servers.push(out);
+  });
+  const tweaks = (src.Networks || []).map((n, i) => {
+    let proto = "ws";
+    if (mnrBool(n.isv2ray)) proto = "v2ray";
+    else if (mnrBool(n.SlowDns) || mnrBool(n.isMnrDns)) proto = "dns";
+    else if (mnrBool(n.isUdp) || mnrBool(n.isMnrStun)) proto = "udp";
+    else if (mnrBool(n.isSSL)) proto = "ssl";
+    return { id: "tw" + (i + 1), name: n.Name || "", protocol: proto,
+      payload: n.Payload || "", sni: n.SNI || "", hostHeader: n.ProxyIP || "",
+      serverId: "", enabled: true,
+      proxyHost: n.ProxyIP || "", proxyPort: parseInt(n.ProxyPort || "0", 10) || 0,
+      wsPayload: mnrBool(n.wsPayload) ? "True" : "False",
+      wsProxyPayload: mnrBool(n.wsProxyPayload) ? "True" : "False",
+      slowDns: mnrBool(n.SlowDns) ? "true" : "",
+      dnsKey: n.dnsKey || "", flag: (n.FLAG || "").toLowerCase() };
+  });
+  return { config_version: Math.floor(Date.now() / 1000) % 100000000, servers, tweaks,
+    telegram_channel: "", telegram_group: "", developer_contact: "" };
+}
+
 async function loadCfgInfo() {
   try {
     const doc = await db.collection("admin").doc("app_config").get();
@@ -226,10 +273,18 @@ async function loadCfgInfo() {
   } catch (e) { }
 }
 $("btnPublishCfg").onclick = async () => {
-  const raw = $("cfgText").value.trim();
+  let raw = $("cfgText").value.trim();
   try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed.servers) || !Array.isArray(parsed.tweaks)) throw new Error("JSON must contain servers[] and tweaks[]");
+    let parsed = JSON.parse(raw);
+    // Format MNR (Servers/Networks) accepté: conversion automatique en format Ettayea
+    if (Array.isArray(parsed.Servers) && Array.isArray(parsed.Networks)) {
+      parsed = convertMnr(parsed);
+      raw = JSON.stringify(parsed);
+      $("cfgText").value = JSON.stringify(parsed, null, 1);
+      $("cfgMsg").textContent = "🔄 MNR format detected — converted to Ettayea format automatically.";
+      $("cfgMsg").className = "msg ok";
+    }
+    if (!Array.isArray(parsed.servers) || !Array.isArray(parsed.tweaks)) throw new Error("JSON must contain servers[] and tweaks[] (or MNR Servers/Networks)");
     await db.collection("admin").doc("app_config").set({
       json: raw, version: parsed.config_version || 0,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
