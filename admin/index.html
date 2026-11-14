@@ -171,6 +171,7 @@ async function loadUsers() {
         <td style="white-space:nowrap">
           <button class="btn ${u.vip ? 'btn-gray' : 'btn-gold'}" onclick="setUser('${id}','vip',${!u.vip})">${u.vip ? 'Remove VIP' : '👑 VIP'}</button>
           <button class="btn ${u.banned ? 'btn-green' : 'btn-red'}" onclick="setUser('${id}','banned',${!u.banned})">${u.banned ? 'Unban' : '⛔ Ban'}</button>
+          <button class="btn btn-gray" onclick="delUser('${id}')">🗑 Delete</button>
         </td></tr>`;
     });
     $("usersBody").innerHTML = rows || '<tr><td colspan="6">No users yet.</td></tr>';
@@ -180,6 +181,12 @@ async function loadUsers() {
 }
 async function setUser(id, field, value) {
   try { await db.collection("users").doc(id).set({ [field]: value }, { merge: true }); loadUsers(); }
+  catch (e) { alert(e.message); }
+}
+
+async function delUser(id) {
+  if (!confirm("Delete this user permanently?")) return;
+  try { await db.collection("users").doc(id).delete(); loadUsers(); }
   catch (e) { alert(e.message); }
 }
 
