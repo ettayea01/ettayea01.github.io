@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ettayea VPN — VPN سريع وآمن ومجاني</title>
 <meta name="description" content="Ettayea VPN — تطبيق VPN سريع وآمن. اتصال بضغطة واحدة، سيرفرات وتويكس من دول متعددة، ووقت مجاني بمشاهدة إعلان قصير.">
+<meta name="theme-color" content="#0d1b2e">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.png">
+<link rel="apple-touch-icon" href="/icon.png">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Arial, sans-serif; }
   body { background:#0d1b2e; color:#eaf2fb; }
@@ -79,5 +83,12 @@
   </section>
 
   <footer>Ettayea VPN — Fast • Secure • Free<br>Config version: 3 • Build version: 4.22</footer>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js').catch(function () {});
+  });
+}
+</script>
 </body>
 </html>
